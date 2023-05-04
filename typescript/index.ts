@@ -48,15 +48,25 @@ type Puzzle = WordState[]
 const intersect = <X extends unknown>(s1: Set<X>, s2: Set<X>): Set<X> =>
   new Set([...s1].filter(x => s2.has(x)))
 
-const constructStartingAlphabet = (): Alphabet =>
-  Object.fromEntries(
-    new Array(26)
-      .fill(null)
-      .map((_, idx) => [
-        idx + 1,
-        { known: false, options: new Set([...alphabet]) },
-      ])
+const constructStartingAlphabet = (
+  givens: Record<number, Character>
+): Alphabet => {
+  const lettersToExclude = Object.values(givens)
+
+  return Object.fromEntries(
+    new Array(26).fill(null).map((n, idx) => [
+      idx + 1,
+      givens[n]
+        ? { known: true, letter: givens[n] }
+        : {
+            known: false,
+            options: new Set(
+              [...alphabet].filter(c => !lettersToExclude.includes(c))
+            ),
+          },
+    ])
   )
+}
 
 const getWordsByLength = (words: WordList, length: number): WordList =>
   words.filter(w => w.length == length)
@@ -107,8 +117,8 @@ const pickWord = (puzzle: Puzzle) =>
 
 const checkSolved = (puzzle: Puzzle) => !puzzle.some(w => w.options.length > 1)
 
-function solve(puzzle: Puzzle) {
-  let alphabet: Alphabet = constructStartingAlphabet()
+function solve(puzzle: Puzzle, givens: Record<number, Character>) {
+  let alphabet: Alphabet = constructStartingAlphabet(givens)
 
   let counter = 0
   const maxIterations = 100
@@ -129,12 +139,14 @@ function solve(puzzle: Puzzle) {
 
 function main() {
   const words: number[][] = []
+  const givens: Record<number, Character> = { 1: "a", 6: "c", 9: "m" }
+
   const puzzle: Puzzle = words.map(numbers => ({
     numbers,
     options: wordList[String(numbers.length)],
   }))
 
-  solve(puzzle)
+  solve(puzzle, givens)
 }
 
 main()
