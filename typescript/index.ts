@@ -44,7 +44,8 @@ type WordState = {
 }
 type Alphabet = Record<number, Letter>
 
-type Puzzle = WordState[]
+type StartingPuzzle = { words: number[][]; givens: [number, Character][] }
+type Puzzle = { words: WordState[]; alphabet: Alphabet }
 
 const intersect = <X extends unknown>(s1: Set<X>, s2: Set<X>): Set<X> =>
   new Set([...s1].filter(x => s2.has(x)))
@@ -112,47 +113,50 @@ const updateAlphabet = (alphabet: Alphabet, word: WordState): Alphabet => {
 
 // get the word with the fewest options remaining (but not solved)
 const pickWord = (puzzle: Puzzle) =>
-  puzzle
+  puzzle.words
     .filter(w => w.options.length > 1)
     .sort((a, b) => (a.options.length > b.options.length ? 1 : -1))[0]
 
-const checkSolved = (puzzle: Puzzle) => !puzzle.some(w => w.options.length > 1)
+const checkSolved = (puzzle: Puzzle) =>
+  !puzzle.words.some(w => w.options.length > 1)
 
-function solve(puzzle: Puzzle, givens: Record<number, Character>) {
-  let alphabet: Alphabet = constructStartingAlphabet(givens)
+function solve(basePuzzle: Puzzle) {
+  let puzzle = basePuzzle
 
   let counter = 0
   const maxIterations = 100
 
   while (true) {
-    if (checkSolved(puzzle)) {
-      console.log("Solved!", puzzle)
-      return puzzle
-    }
+    console.log(`Starting iteration #${counter + 1}`)
+
     if (counter++ > maxIterations)
       throw new Error(`Exceeded max iterations: ${maxIterations}`)
 
     // TODO: update state each step
     let nextWord = pickWord(puzzle)
-    let updatedWord = updateWordsList(nextWord, alphabet)
-    let updatedAlphabet = updateAlphabet(alphabet, updatedWord)
+    let updatedWord = updateWordsList(nextWord, puzzle.alphabet)
+    let updatedAlphabet = updateAlphabet(puzzle.alphabet, updatedWord)
+
+    if (checkSolved(puzzle)) {
+      console.log("Solved!", puzzle)
+      return puzzle
+    }
   }
 }
 
 function main() {
-  const words: number[][] = puzzles[0].words
-  const givens: Record<number, Character> = Object.fromEntries(
-    Object.entries(puzzles[0].givens).map(
-      ([k, v]) => [Number(k), v] as [number, Character]
-    )
-  )
+  const startingPuzzle = puzzles[0] as StartingPuzzle
+  const puzzle: Puzzle = {
+    words: startingPuzzle.words.map(numbers => ({
+      numbers,
+      options: wordList[String(numbers.length)],
+    })),
+    alphabet: constructStartingAlphabet(
+      Object.fromEntries(startingPuzzle.givens)
+    ),
+  }
 
-  const puzzle: Puzzle = words.map(numbers => ({
-    numbers,
-    options: wordList[String(numbers.length)],
-  }))
-
-  solve(puzzle, givens)
+  solve(puzzle)
 }
 
 main()
