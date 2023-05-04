@@ -1,4 +1,5 @@
 import { produce } from "immer"
+import wordList from "../words.json"
 
 const alphabet = [
   "a",
@@ -106,8 +107,7 @@ const pickWord = (puzzle: Puzzle) =>
 
 const checkSolved = (puzzle: Puzzle) => !puzzle.some(w => w.options.length > 1)
 
-function main() {
-  let puzzle: Puzzle = []
+function solve(puzzle: Puzzle) {
   let alphabet: Alphabet = constructStartingAlphabet()
 
   let counter = 0
@@ -126,3 +126,15 @@ function main() {
     let updatedAlphabet = updateAlphabet(alphabet, updatedWord)
   }
 }
+
+function main() {
+  const words: number[][] = []
+  const puzzle: Puzzle = words.map(numbers => ({
+    numbers,
+    options: wordList[String(numbers.length)],
+  }))
+
+  solve(puzzle)
+}
+
+main()
