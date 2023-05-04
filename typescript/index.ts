@@ -1,5 +1,6 @@
 import { produce } from "immer"
 import wordList from "../words.json"
+import puzzles from "./samples.json"
 
 const alphabet = [
   "a",
@@ -122,6 +123,7 @@ function solve(puzzle: Puzzle, givens: Record<number, Character>) {
 
   let counter = 0
   const maxIterations = 100
+
   while (true) {
     if (checkSolved(puzzle)) {
       console.log("Solved!", puzzle)
@@ -138,8 +140,12 @@ function solve(puzzle: Puzzle, givens: Record<number, Character>) {
 }
 
 function main() {
-  const words: number[][] = []
-  const givens: Record<number, Character> = { 1: "a", 6: "c", 9: "m" }
+  const words: number[][] = puzzles[0].words
+  const givens: Record<number, Character> = Object.fromEntries(
+    Object.entries(puzzles[0].givens).map(
+      ([k, v]) => [Number(k), v] as [number, Character]
+    )
+  )
 
   const puzzle: Puzzle = words.map(numbers => ({
     numbers,
