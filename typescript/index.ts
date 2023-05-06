@@ -146,6 +146,9 @@ const updateAlphabet = (puzzle: Puzzle): Puzzle =>
     })
   })
 
+const checkBroken = (puzzle: Puzzle) =>
+  puzzle.words.some(w => w.options.length === 0)
+
 const checkSolved = (puzzle: Puzzle) =>
   !puzzle.words.some(w => w.options.length > 1)
 
@@ -173,6 +176,11 @@ function solve(basePuzzle: Puzzle) {
 
     puzzle = updateWordOptions(puzzle)
     puzzle = updateAlphabet(puzzle)
+
+    if (checkBroken(puzzle)) {
+      console.log("Solve broken!", puzzle)
+      return puzzle
+    }
 
     if (checkSolved(puzzle)) {
       console.log("Solved!", puzzle)
