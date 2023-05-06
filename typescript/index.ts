@@ -1,6 +1,9 @@
-import { produce } from "immer"
+import { produce, enableMapSet } from "immer"
 import wordList from "../words.json"
 import puzzles from "./samples.json"
+
+// enable Set support for immer
+enableMapSet()
 
 const alphabet = [
   "a",
