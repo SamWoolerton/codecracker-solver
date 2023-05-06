@@ -86,8 +86,8 @@ const updateWordOptions = (puzzle: Puzzle): Puzzle =>
     let anyChanges = false
 
     // try words until the options got whittled down (normally the first one will be fine)
-    for (let index = 0; index < puzzle.words.length; index++) {
-      const word = puzzle.words[index]
+    for (let index = 0; index < p.words.length; index++) {
+      const word = p.words[index]
 
       const newOptions = word.options.filter(wordOption => {
         for (let i = 0; i < word.numbers.length; i++) {
