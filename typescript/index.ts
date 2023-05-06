@@ -137,7 +137,17 @@ function solve(basePuzzle: Puzzle) {
   const maxIterations = 100
 
   while (true) {
-    console.log(`Starting iteration #${counter + 1}`)
+    console.log(
+      `\nStarting iteration #${counter + 1}` +
+        `\n\tWord option counts: ${puzzle.words.map(w => w.options.length)}` +
+        `\n\tLetter options: ${Object.entries(puzzle.alphabet)
+          .map(
+            ([n, o]) =>
+              `${n}: ${o.known ? o.letter : [...o.options].join(",")};`
+          )
+          .join(" ")}` +
+        "\n\n"
+    )
 
     if (counter++ > maxIterations)
       throw new Error(`Exceeded max iterations: ${maxIterations}`)
