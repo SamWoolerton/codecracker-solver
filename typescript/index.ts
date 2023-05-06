@@ -134,6 +134,19 @@ const updateAlphabet = (puzzle: Puzzle): Puzzle =>
           const letter = [...newOptions][0]
           console.log(`Solved number ${n} as letter ${letter}`)
           p.alphabet[n] = { known: true, letter }
+
+          // remove from other options
+          let counter = 0
+          for (const n in p.alphabet) {
+            const l = p.alphabet[n]
+            if (!l.known) {
+              if (l.options.has(letter)) counter++
+              l.options.delete(letter)
+            }
+          }
+          console.log(
+            `\tRemoved ${letter} as an option from ${counter} numbers`
+          )
         } else {
           console.log(
             letter.options.size === newOptions.size
