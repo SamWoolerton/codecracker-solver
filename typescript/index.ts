@@ -51,7 +51,7 @@ type StartingPuzzle = { words: number[][]; givens: [number, Character][] }
 type Puzzle = {
   words: WordState[]
   alphabet: Alphabet
-  lastUpdatedWordIndex: number
+  // lastUpdatedWordIndex: number
 }
 
 const intersect = <X extends unknown>(s1: Set<X>, s2: Set<X>): Set<X> =>
@@ -83,6 +83,8 @@ const getLetterOptionsFromWords = (words: WordList, index: number) =>
 const updateWordOptions = (puzzle: Puzzle): Puzzle =>
   // using immer for structural sharing
   produce(puzzle, p => {
+    let anyChanges = false
+
     // try words until the options got whittled down (normally the first one will be fine)
     for (let index = 0; index < puzzle.words.length; index++) {
       const word = puzzle.words[index]
@@ -98,49 +100,49 @@ const updateWordOptions = (puzzle: Puzzle): Puzzle =>
       })
 
       if (newOptions.length === word.options.length) {
-        console.log("No update to words; trying next word")
+        console.log("No update to word options; trying next word")
         continue
       } else {
         console.log(
           `Word options decreased from ${word.options.length} to ${newOptions.length}`
         )
+        anyChanges = true
+        word.options = newOptions
       }
 
-      // only return if the options are actually different
-      word.options = newOptions
-      puzzle.lastUpdatedWordIndex = index
-      return
+      // uncommenting this gives early return after the first word decreases in size
+      // return
     }
 
-    throw new Error("Couldn't update any word options")
+    if (!anyChanges) throw new Error("Couldn't update any word options")
   })
 
 const updateAlphabet = (puzzle: Puzzle): Puzzle =>
   // using immer for structural sharing
   produce(puzzle, p => {
-    const word = p.words[p.lastUpdatedWordIndex]
+    p.words.forEach(word => {
+      word.numbers.forEach((n, idx) => {
+        const letter = p.alphabet[n]
+        if (letter.known) return
 
-    word.numbers.forEach((n, idx) => {
-      const letter = p.alphabet[n]
-      if (letter.known) return
-
-      const newOptions = intersect(
-        letter.options,
-        getLetterOptionsFromWords(word.options, idx)
-      )
-
-      if (newOptions.size === 1) {
-        const letter = [...newOptions][0]
-        console.log(`Solved number ${n} as letter ${letter}`)
-        p.alphabet[n] = { known: true, letter }
-      } else {
-        console.log(
-          letter.options.size === newOptions.size
-            ? `Letter options for ${n} stay unchanged (${letter.options.size} options)`
-            : `Letter options for ${n} decreased from ${letter.options.size} to ${newOptions.size} options`
+        const newOptions = intersect(
+          letter.options,
+          getLetterOptionsFromWords(word.options, idx)
         )
-        letter.options = newOptions
-      }
+
+        if (newOptions.size === 1) {
+          const letter = [...newOptions][0]
+          console.log(`Solved number ${n} as letter ${letter}`)
+          p.alphabet[n] = { known: true, letter }
+        } else {
+          console.log(
+            letter.options.size === newOptions.size
+              ? `Letter options for ${n} stay unchanged (${letter.options.size} options)`
+              : `Letter options for ${n} decreased from ${letter.options.size} to ${newOptions.size} options`
+          )
+          letter.options = newOptions
+        }
+      })
     })
   })
 
@@ -196,9 +198,9 @@ function main() {
     alphabet: constructStartingAlphabet(
       Object.fromEntries(startingPuzzle.givens)
     ),
-    lastUpdatedWordIndex: puzzleWords.findIndex(
-      w => w.options.length === minLength
-    ),
+    // lastUpdatedWordIndex: puzzleWords.findIndex(
+    //   w => w.options.length === minLength
+    // ),
   }
 
   solve(puzzle)
