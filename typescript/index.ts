@@ -80,17 +80,13 @@ const constructStartingAlphabet = (
 const getLetterOptionsFromWords = (words: WordList, index: number) =>
   new Set(words.map(w => w[index] as Character))
 
-// get the word with the fewest options remaining (but not solved)
-const pickWord = (wordsList: WordState[]) =>
-  wordsList
-    .filter(w => w.options.length > 1)
-    .sort((a, b) => (a.options.length > b.options.length ? 1 : -1))[0]
-
 const updateWordOptions = (puzzle: Puzzle): Puzzle =>
   // using immer for structural sharing
   produce(puzzle, p => {
     // try words until the options got whittled down (normally the first one will be fine)
-    for (const word of puzzle.words) {
+    for (let index = 0; index < puzzle.words.length; index++) {
+      const word = puzzle.words[index]
+
       const newOptions = word.options.filter(wordOption => {
         for (let i = 0; i < word.numbers.length; i++) {
           const a = p.alphabet[word.numbers[i]]
@@ -100,10 +96,19 @@ const updateWordOptions = (puzzle: Puzzle): Puzzle =>
         }
         return true
       })
-      if (newOptions.length === word.options.length) continue
+
+      if (newOptions.length === word.options.length) {
+        console.log("No update to words; trying next word")
+        continue
+      } else {
+        console.log(
+          `Word options decreased from ${word.options.length} to ${newOptions.length}`
+        )
+      }
 
       // only return if the options are actually different
       word.options = newOptions
+      puzzle.lastUpdatedWordIndex = index
       return
     }
 
@@ -124,9 +129,18 @@ const updateAlphabet = (puzzle: Puzzle): Puzzle =>
         getLetterOptionsFromWords(word.options, idx)
       )
 
-      if (newOptions.size === 1)
-        p.alphabet[n] = { known: true, letter: [...newOptions][0] }
-      else letter.options = newOptions
+      if (newOptions.size === 1) {
+        const letter = [...newOptions][0]
+        console.log(`Solved number ${n} as letter ${letter}`)
+        p.alphabet[n] = { known: true, letter }
+      } else {
+        console.log(
+          letter.options.size === newOptions.size
+            ? `Letter options for ${n} stay unchanged (${letter.options.size} options)`
+            : `Letter options for ${n} decreased from ${letter.options.size} to ${newOptions.size} options`
+        )
+        letter.options = newOptions
+      }
     })
   })
 
@@ -141,7 +155,7 @@ function solve(basePuzzle: Puzzle) {
 
   while (true) {
     console.log(
-      `\nStarting iteration #${counter + 1}` +
+      `\n\nStarting iteration #${counter + 1}` +
         `\n\tWord option counts: ${puzzle.words.map(w => w.options.length)}` +
         `\n\tLetter options: ${Object.entries(puzzle.alphabet)
           .map(
