@@ -165,6 +165,24 @@ const checkBroken = (puzzle: Puzzle) =>
 const checkSolved = (puzzle: Puzzle) =>
   !puzzle.words.some(w => w.options.length > 1)
 
+function formatSolution(puzzle: Puzzle) {
+  if (puzzle.words.some(w => w.options.length !== 1))
+    throw new Error("Can't format solution for an unsolved puzzle")
+
+  return (
+    "\n\nWords:\n" +
+    puzzle.words.map(w => w.options[0]).join("\n") +
+    "\n\nLetters:\n" +
+    Object.entries(puzzle.alphabet)
+      .map(([n, l]) => {
+        if (!l.known)
+          throw new Error("Can't format solution for an unsolved puzzle")
+        return `${n}: ${l.letter}`
+      })
+      .join(", ")
+  )
+}
+
 function solve(basePuzzle: Puzzle) {
   let puzzle = basePuzzle
 
@@ -191,12 +209,12 @@ function solve(basePuzzle: Puzzle) {
     puzzle = updateAlphabet(puzzle)
 
     if (checkBroken(puzzle)) {
-      console.log("Solve broken!", puzzle)
+      console.log("\nSolve broken!", puzzle)
       return puzzle
     }
 
     if (checkSolved(puzzle)) {
-      console.log("Solved!", puzzle)
+      console.log("\nSolved!", formatSolution(puzzle))
       return puzzle
     }
   }
