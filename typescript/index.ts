@@ -45,7 +45,11 @@ type WordState = {
 type Alphabet = Record<number, Letter>
 
 type StartingPuzzle = { words: number[][]; givens: [number, Character][] }
-type Puzzle = { words: WordState[]; alphabet: Alphabet }
+type Puzzle = {
+  words: WordState[]
+  alphabet: Alphabet
+  lastUpdatedWordIndex: number
+}
 
 const intersect = <X extends unknown>(s1: Set<X>, s2: Set<X>): Set<X> =>
   new Set([...s1].filter(x => s2.has(x)))
@@ -56,10 +60,10 @@ const constructStartingAlphabet = (
   const lettersToExclude = Object.values(givens)
 
   return Object.fromEntries(
-    new Array(26).fill(null).map((n, idx) => [
+    new Array(26).fill(null).map((_, idx) => [
       idx + 1,
-      givens[n]
-        ? { known: true, letter: givens[n] }
+      givens[idx + 1]
+        ? { known: true, letter: givens[idx + 1] }
         : {
             known: false,
             options: new Set(
@@ -70,30 +74,46 @@ const constructStartingAlphabet = (
   )
 }
 
-const getWordsByLength = (words: WordList, length: number): WordList =>
-  words.filter(w => w.length == length)
-
 const getLetterOptionsFromWords = (words: WordList, index: number) =>
   new Set(words.map(w => w[index] as Character))
 
-const updateWordsList = (wordState: WordState, alphabet: Alphabet): WordState =>
-  produce(wordState, ws => {
-    ws.options = ws.options.filter(wordOption => {
-      for (let i = 0; i < ws.numbers.length; i++) {
-        const a = alphabet[ws.numbers[i]]
-        if (a.known) {
-          if (wordOption[i] !== a.letter) return false
-        } else if (!a.options.has(wordOption[i] as Character)) return false
-      }
-      return true
-    })
+// get the word with the fewest options remaining (but not solved)
+const pickWord = (wordsList: WordState[]) =>
+  wordsList
+    .filter(w => w.options.length > 1)
+    .sort((a, b) => (a.options.length > b.options.length ? 1 : -1))[0]
+
+const updateWordOptions = (puzzle: Puzzle): Puzzle =>
+  // using immer for structural sharing
+  produce(puzzle, p => {
+    // try words until the options got whittled down (normally the first one will be fine)
+    for (const word of puzzle.words) {
+      const newOptions = word.options.filter(wordOption => {
+        for (let i = 0; i < word.numbers.length; i++) {
+          const a = p.alphabet[word.numbers[i]]
+          if (a.known) {
+            if (wordOption[i] !== a.letter) return false
+          } else if (!a.options.has(wordOption[i] as Character)) return false
+        }
+        return true
+      })
+      if (newOptions.length === word.options.length) continue
+
+      // only return if the options are actually different
+      word.options = newOptions
+      return
+    }
+
+    throw new Error("Couldn't update any word options")
   })
 
-const updateAlphabet = (alphabet: Alphabet, word: WordState): Alphabet => {
+const updateAlphabet = (puzzle: Puzzle): Puzzle =>
   // using immer for structural sharing
-  return produce(alphabet, a => {
+  produce(puzzle, p => {
+    const word = p.words[p.lastUpdatedWordIndex]
+
     word.numbers.forEach((n, idx) => {
-      const letter = a[n]
+      const letter = p.alphabet[n]
       if (letter.known) return
 
       const newOptions = intersect(
@@ -102,20 +122,10 @@ const updateAlphabet = (alphabet: Alphabet, word: WordState): Alphabet => {
       )
 
       if (newOptions.size === 1)
-        a[n] = { known: true, letter: [...newOptions][0] }
+        p.alphabet[n] = { known: true, letter: [...newOptions][0] }
       else letter.options = newOptions
     })
-
-    for (const n of word.numbers) {
-    }
   })
-}
-
-// get the word with the fewest options remaining (but not solved)
-const pickWord = (puzzle: Puzzle) =>
-  puzzle.words
-    .filter(w => w.options.length > 1)
-    .sort((a, b) => (a.options.length > b.options.length ? 1 : -1))[0]
 
 const checkSolved = (puzzle: Puzzle) =>
   !puzzle.words.some(w => w.options.length > 1)
@@ -132,10 +142,8 @@ function solve(basePuzzle: Puzzle) {
     if (counter++ > maxIterations)
       throw new Error(`Exceeded max iterations: ${maxIterations}`)
 
-    // TODO: update state each step
-    let nextWord = pickWord(puzzle)
-    let updatedWord = updateWordsList(nextWord, puzzle.alphabet)
-    let updatedAlphabet = updateAlphabet(puzzle.alphabet, updatedWord)
+    puzzle = updateWordOptions(puzzle)
+    puzzle = updateAlphabet(puzzle)
 
     if (checkSolved(puzzle)) {
       console.log("Solved!", puzzle)
@@ -146,13 +154,23 @@ function solve(basePuzzle: Puzzle) {
 
 function main() {
   const startingPuzzle = puzzles[0] as StartingPuzzle
+
+  const puzzleWords = startingPuzzle.words.map(numbers => ({
+    numbers,
+    options: wordList[String(numbers.length) as keyof typeof wordList].map(
+      w => w.word
+    ) as WordList,
+  }))
+  const minLength = puzzleWords
+    .map(w => w.options.length)
+    .reduce((a, b) => (a < b ? a : b))
   const puzzle: Puzzle = {
-    words: startingPuzzle.words.map(numbers => ({
-      numbers,
-      options: wordList[String(numbers.length)],
-    })),
+    words: puzzleWords,
     alphabet: constructStartingAlphabet(
       Object.fromEntries(startingPuzzle.givens)
+    ),
+    lastUpdatedWordIndex: puzzleWords.findIndex(
+      w => w.options.length === minLength
     ),
   }
 
